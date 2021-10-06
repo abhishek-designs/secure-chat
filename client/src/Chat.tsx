@@ -11,6 +11,7 @@ const Chat: FC<RouteComponentProps<ChatParams>> = props => {
   const socket = useContext(SocketContext);
   const [announce, setAnnounce] = useState("");
   const [message, setMessage] = useState("");
+  // const [loader, setLoader] = useState(false);
   const [chats, setChats] = useState<Message[]>([]);
 
   // Function to send message
@@ -41,7 +42,7 @@ const Chat: FC<RouteComponentProps<ChatParams>> = props => {
   };
 
   useEffect(() => {
-    socket?.connect();
+    // socket?.connect();
     socket?.on("connect", () => console.log("client connected"));
     // Emit an event to join the user to the room
     socket?.emit("join-chat", userDetails, room);

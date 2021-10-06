@@ -11,7 +11,10 @@ interface Props {
 
 const ChatRequest: FC<RouteProps & Props> = props => {
   const history = useHistory();
+  const [loader, setLoader] = useState(false);
+
   const [user] = useState<Customer>(props.location?.state);
+  const [givenRoom, setRoom] = useState("");
   // Using socket instance for realtime communication
   const socket = useContext(SocketContext);
   // props.location && props.location?.state
@@ -22,25 +25,36 @@ const ChatRequest: FC<RouteProps & Props> = props => {
   };
 
   useEffect(() => {
-    // Connect to the socket instance first
-    socket?.connect();
+    //? Connect to the socket instance first
+    // socket?.connect();
     socket?.on("connect", () => console.log("we are connected"));
     // Fetch the alert if any
     socket?.on("on-alert", alert => console.log(alert));
-    // Get the roomid and redirect to chat room if request has been accepted by admin
+
+    // SERVER Get the roomid and redirect to chat room if request has been accepted by admin
     socket?.on("on-request-accept", response => {
+      // socket?.emit("join-chat", user, response.room);
+      // setRoom(response.room);
       history.push(`/chat/${user.name}/${response.roomid}`, user);
     });
     // Disconnect from socket before unmounting
-    return () => {
-      socket?.disconnect();
-    };
+    // return () => {
+    //   socket?.disconnect();
+    // };
   }, []);
+
+  useEffect(() => {
+    socket?.on("on-waiting", load => {
+      setLoader(load);
+    });
+    console.log(loader);
+  }, [loader]);
 
   return (
     <div>
       <h1>Chat with our admin</h1>
       <p>Have a nice day</p>
+      <div>{loader ? "Loading....." : "no loading"}</div>
       <br />
       <br />
       <br />

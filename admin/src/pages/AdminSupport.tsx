@@ -3,48 +3,73 @@ import { Link } from "react-router-dom";
 import { SocketContext } from "../context/SocketContext";
 import { Notification, Customer, Room } from "../types";
 
+interface Indication {
+  id: string;
+  isWaiting: boolean;
+}
+
 const AdminSupport = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [connectedRooms, setConnectedRooms] = useState<Room[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [joinedRoom, setJoinedRoom] = useState<string>();
+  const [currentRoom, setCurrentRoom] = useState<Room>();
+  const [isExists, setExists] = useState(false);
+  const [counter, setCounter] = useState(1);
+  // const [isWaiting, setWaiting] = useState<Indication>({  });
+
   const socket = useContext(SocketContext);
+  // Function to fetch item from localstorage
+  const fetchFromLocalStorage = (key: string) => {
+    // Check wether if there is an existing data
+    let savedRooms;
+    const storedRoom: any = localStorage.getItem(key);
+
+    savedRooms = JSON.parse(storedRoom);
+
+    return savedRooms;
+  };
+
+  // Function check wether data exists or not
+  const checkExists = (newItem: any, items: any[]) => {
+    const exists = items.some(item => item.id === newItem.id);
+    // setExists(exists)
+    return exists;
+  };
+
+  // Function to store  item to ls
+  const storeToLocalStorage = (item: any[], key: string) => {
+    localStorage.setItem(key, JSON.stringify(item)); // [{}]
+  };
 
   // Function to grant access
   const showChatRequest = () => {
     socket?.on("to-admin", notification => {
-      if (
-        notifications.some(
-          (notif: Notification) => notif.id === notification.id
-        )
-      ) {
-        console.log("already exists");
-        socket?.emit("request-alert", {
-          id: socket.id,
-          msg: "Request already recieved dont need to send again get lost",
-        });
-      } else {
-        setNotifications([...notifications, notification]);
-      }
+      const booleanChecker = checkExists(notification, notifications);
+      !booleanChecker && setNotifications([...notifications, notification]);
+      // setTimeout(() => {
+      //   console.log("hello");
+      //   removeNotification(notification.id);
+      // }, 5000);
+    });
+
+    // Emit the loading state to all the client who sent the request
+    notifications.forEach(notif => {
+      // Emit the loading state
+      socket?.emit("client-waiting", true, notif.id);
+
+      setTimeout(() => {
+        socket?.emit("client-waiting");
+      });
     });
   };
 
   // Function to render the connected chat rooms for the user
   const displayChatRooms = () => {
     socket?.on("on-join-chat", (user, room) => {
+      console.log({ ...user, room });
       const chatRoom: Room = { ...user, room };
-      const roomid = room;
-      console.log(user, room);
-      if (connectedRooms?.some((room: Room) => room.room === roomid)) {
-        console.log("already exists");
-      } else {
-        setConnectedRooms([...connectedRooms, chatRoom]);
-      }
+      setConnectedRooms([...connectedRooms, chatRoom]);
     });
-    // Listening wether user has joined the room or not if yes then render this user on our screen
-    // socket?.on("on-join-chat", (user, room) => {
-    //   const chatRoom: Room = { ...user, room };
-    //   console.log(chatRoom);
-    //   setConnectedRooms(prevMsg => [...prevMsg, chatRoom]);
-    // });
   };
 
   // Function to remove a notification
@@ -55,17 +80,22 @@ const AdminSupport = () => {
 
   // Function to trigger when admin accepts the request
   const onRequestAccept = (id: string) => {
+    // setWaiting(false);
     // Emit the request accept event to the server
     socket?.emit("request-accept", id);
     // Remove notification also when accepting
     removeNotification(id);
   };
 
+  // Function to give waiting indication to client
+  const giveIndication = () => {
+    // setWaiting(true);
+    socket?.emit("client-waiting");
+  };
+
   useEffect(() => {
     // Connect to socket instance
-    socket?.connect();
     socket?.on("connect", () => console.log("admin connected"));
-    displayChatRooms();
 
     return () => {
       socket?.disconnect();
@@ -73,9 +103,25 @@ const AdminSupport = () => {
   }, []);
 
   useEffect(() => {
+    notifications.forEach(notif => {
+      setTimeout(() => {
+        removeNotification(notif.id);
+        console.log(counter);
+      }, 1000 * counter);
+      setCounter(counter + 1);
+    });
+  }, [counter]);
+
+  useEffect(() => {
     showChatRequest();
+    giveIndication();
+  }, [notifications, isExists]);
+
+  useEffect(() => {
     displayChatRooms();
-  }, [notifications, connectedRooms]);
+    console.log(connectedRooms);
+    storeToLocalStorage(connectedRooms, "room-123");
+  }, [connectedRooms]);
 
   return (
     <div style={{ padding: "0 1rem" }}>
@@ -127,7 +173,7 @@ const AdminSupport = () => {
         >
           <ul>
             {connectedRooms?.map(room => (
-              <Link to={`/chat/brad/${room.room}`} key={room.room}>
+              <Link to={`/chat/brad/${room.room}`} key={room.id}>
                 <li
                   style={{
                     display: "flex",

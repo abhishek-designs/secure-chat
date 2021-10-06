@@ -7,12 +7,18 @@
     "client": "npm start --prefix client",
     "admin": "npm start --prefix admin",
     "server": "npm run server --prefix server",
-    "dev": "concurrently \"npm run server\" \"npm run client\" \"npm run admin\""
+    "dev": "concurrently \"npm run server\" \"npm run client\" \"npm run admin\"",
+    "ci": "cd client && npm install",
+    "ai": "cd admin && npm install",
+    "si": "cd server && npm install",
+    "conc": "npm install  concurrently",
+    "triple-install": "conc && concurrently \"npm run ci\" \"npm run ai\" \"npm run si\""
   },
   "keywords": [],
   "author": "Abhishek",
   "license": "MIT",
-  "dependencies": {
-    "concurrently": "^6.2.2"
+  "dependencies": {},
+  "devDependencies": {
+    "concurrently": "^6.3.0"
   }
 }

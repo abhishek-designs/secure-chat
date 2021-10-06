@@ -23,35 +23,36 @@ app.get("/", (req, res) => {
 // Establishing socket io connection
 io.on("connection", socket => {
   console.log("new user connected" + socket.id);
+  console.log(io.engine.clientCount);
 
-  // Listen when client sends a chat request
+  // CLIENT Listen when client sends a chat request
   socket.on("chat-request", user => {
     console.log(user);
     const notification = {
       id: socket.id,
       msg: `${user.name} wants to chat with you`,
     };
-    // Forward this request to the admin
+    // ADMIN Forward this request to the admin
     socket.broadcast.emit("to-admin", notification);
   });
 
-  // Send the alert to the user when He/She request again
+  // ADMIN Send the alert to the user when He/She request again
   socket.on("request-alert", alert => {
     socket.broadcast.emit("on-alert", alert);
   });
 
-  // Hold a chat between client and admin by sending a random room id
+  // SERVER Hold a chat between client and admin by sending a random room id
   socket.on("request-accept", userid => {
     const roomid = randomUUID();
     const response = {
       msg: "You r eligible for this chat",
       roomid,
     };
-    // Send the response to that specific client who requested for chat with the help of socket id
+    // ADMIN Send the response to that specific client who requested for chat with the help of socket id
     socket.to(userid).emit("on-request-accept", response);
   });
 
-  // If a client joined the chat room inform the admin with user details and room id
+  // SERVER If a client joined the chat room inform the admin with user details and room id
   socket.on("join-chat", (user, room) => {
     console.log(user, room);
     const message = {
@@ -59,10 +60,11 @@ io.on("connection", socket => {
       userid: socket.id,
       msg: `${user.name} joined the chat`,
     };
-    // Also join this client to this room
+    // SERVER Also join this client to this room
     socket.join(room);
-    socket.to(room).emit("room-msg", message);
+    // socket.to(room).emit("room-msg", message);
     console.log("client joined");
+    // ADMIN get the user details and room id when client joins
     socket.broadcast.emit("on-join-chat", user, room);
   });
 
@@ -77,22 +79,27 @@ io.on("connection", socket => {
     console.log("admin joined");
   });
 
-  // Observing the sent messages
+  // SERVER Observing the sent messages
   socket.on("sent-message", (msg, room) => {
-    // Forward the message to this room
+    // SERVER Forward the message to this room
     socket.to(room).emit("recieved-message", msg);
   });
 
-  // Listen to this event user wants to leave the room
+  // SERVER Listen to this event user wants to leave the room
   socket.on("on-leave-room", (room, msg) => {
-    // Kick out the users from the room
+    // SERVER Kick out the users from the room
     socket.to(room).emit("room-msg", msg);
     socket.leave(room);
   });
 
-  console.log(socket.rooms);
+  // ADMIN give indication to client for waiting
+  socket.on("client-waiting", (waiting, id) => {
+    // SERVER emit this indicator to client
+    console.log(id, waiting);
+    socket.to(id).emit("on-waiting", waiting);
+  });
 
-  // Log when any user gets disconnected
+  //SERVER Log when any user gets disconnected
   socket.on("disconnection", () =>
     console.log(`User ${socket.id} disconnected`)
   );
